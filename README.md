@@ -49,5 +49,5 @@ After this, your decompiled files will be placed in C:/output and [XNBLib] will 
 XNBExporter is a console application I developed to showcase XNBLib. Check it out [here](https://github.com/Pyroglyph/XNBExporter)!
 
 ### Acknowledgments
-gameking008 - For the WAVE exporter.
-[Dcrew](https://github.com/DeanReynolds) - For increasing efficiency, fixing bugs, and adding SpriteFontTexture support.
+- gameking008 - For the WAVE exporter.
+- [Dcrew](https://github.com/DeanReynolds) - For increasing efficiency, fixing bugs, and adding SpriteFontTexture support.
