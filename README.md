@@ -3,12 +3,14 @@ Someone please help me format this better :(
 --->
 
 # XNBLib
-
 XNBLib is the library behind XNBE, my XNB decompiler. It allows easy asset decompilation for all the formats that both XNA amd MonoGame support.
 
 ## Supported Formats
 - Images (output as PNG)
 - Audio (output as WAV)
+- SpriteFontTexture (output as PNG)
+
+More planned!
 
 ## Usage
 1. Import the library into your project.
@@ -45,3 +47,7 @@ After this, your decompiled files will be placed in C:/output and [XNBLib] will 
 
 ### Live Example
 XNBExporter is a console application I developed to showcase XNBLib. Check it out [here](https://github.com/Pyroglyph/XNBExporter)!
+
+### Acknowledgments
+gameking008 - For the WAVE exporter.
+[Dcrew](https://github.com/DeanReynolds) - For increasing efficiency, fixing bugs, and adding SpriteFontTexture support.
