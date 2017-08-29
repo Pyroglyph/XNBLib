@@ -31,7 +31,7 @@ namespace XNBLib
                     return new Result(Result.Types.InvalidPlatform, platform.ToString());
                 int xnaVersion = br.ReadByte();
                 if (xnaVersion != 5)
-                    return new Result(Result.Types.UninplementedXNAVersion, xnaVersion.ToString());
+                    return new Result(Result.Types.UninplementedXnaVersion, xnaVersion.ToString());
                 var profile = br.ReadByte();
                 if (profile != 0)
                     return new Result(Result.Types.UnimplementedProfile, profile.ToString());
@@ -58,7 +58,7 @@ namespace XNBLib
                 if (formatChunkSize != 18)
                     return new Result(Result.Types.WrongFormatChunkSize, formatChunkSize.ToString());
                 if ((wFormatTag = br.ReadUInt16()) != 1)
-                    return new Result(Result.Types.UnimplementedWAVCodec, "Must be PCM");
+                    return new Result(Result.Types.UnimplementedWavCodec, "Must be PCM");
                 nChannels = br.ReadUInt16();
                 nSamplesPerSec = br.ReadUInt32();
                 nAvgBytesPerSec = br.ReadUInt32();
@@ -92,7 +92,7 @@ namespace XNBLib
             return new Result(Result.Types.Success);
         }
 
-        static int Read7BitEncodedInt(BinaryReader br)
+        private static int Read7BitEncodedInt(BinaryReader br)
         {
             var num = 0;
             var num2 = 0;
@@ -117,7 +117,7 @@ namespace XNBLib
                 UnknownError,
                 InvalidFileFormat,
                 InvalidPlatform,
-                UninplementedXNAVersion,
+                UninplementedXnaVersion,
                 UnimplementedProfile,
                 FileLengthMismatch,
                 TooManyTypes,
@@ -125,7 +125,7 @@ namespace XNBLib
                 WrongTypeReaderVersion,
                 TooManySharedResources,
                 WrongFormatChunkSize,
-                UnimplementedWAVCodec,
+                UnimplementedWavCodec,
                 InvalidAvergateBytesPerSec,
                 InvalidBlockAlign
             }

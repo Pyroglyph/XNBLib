@@ -24,9 +24,11 @@ namespace XNBLib
         {
             _graphics = new GraphicsDeviceManager(this);
             _files = files;
-            if (!outPath.EndsWith("\\"))
-                outPath += "\\";
-            _outPath = outPath;
+            if (outPath.Length > 0)
+            {
+                if (!outPath.EndsWith("\\")) outPath += "\\";
+                _outPath = outPath;
+            }
         }
 
         protected override void LoadContent()
@@ -80,13 +82,13 @@ namespace XNBLib
                         {
                             // Export image
                             var content = (Texture2D) obj;
-                            var outStream =
-                                File.Open(
-                                    _outPath == ""
-                                        ? Path.ChangeExtension(_files[i], ".png")
-                                        : _outPath + Path.GetFileNameWithoutExtension(_files[i]) + ".png",
-                                    FileMode.Create);
-                            content.SaveAsPng(outStream, content.Width, content.Height);
+                            using (var outStream =
+                                 File.Open(
+                                     _outPath == ""
+                                         ? Path.ChangeExtension(_files[i], ".png")
+                                         : _outPath + Path.GetFileNameWithoutExtension(_files[i]) + ".png",
+                                     FileMode.Create))
+                                content.SaveAsPng(outStream, content.Width, content.Height);
 
                             UpdateStatus($"[SUCCESS] Exported {Path.GetFileNameWithoutExtension(_files[i])}.png");
                         }
@@ -94,13 +96,13 @@ namespace XNBLib
                         {
                             // Export font atlas
                             var content = (SpriteFont) obj;
-                            var outStream =
+                            using (var outStream =
                                 File.Open(
                                     _outPath == ""
                                         ? Path.ChangeExtension(_files[i], ".png")
                                         : _outPath + Path.GetFileNameWithoutExtension(_files[i]) + ".png",
-                                    FileMode.Create);
-                            content.Texture.SaveAsPng(outStream, content.Texture.Width, content.Texture.Height);
+                                    FileMode.Create))
+                                content.Texture.SaveAsPng(outStream, content.Texture.Width, content.Texture.Height);
 
                             UpdateStatus($"[SUCCESS] Exported {Path.GetFileNameWithoutExtension(_files[i])}.png");
                         }
