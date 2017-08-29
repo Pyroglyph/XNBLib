@@ -2,6 +2,8 @@
 using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.IO;
+using System.Text;
+using Microsoft.Xna.Framework.Content;
 
 namespace XNBLib
 {
@@ -11,124 +13,133 @@ namespace XNBLib
         public event StatusUpdated OnStatusUpdate;
         public delegate void Completed();
         public event Completed OnCompleted;
-
+        
         private GraphicsDeviceManager _graphics;
-        private static ResourceType _type;
+        private static ContentManager _contentManager;
+
         private readonly string[] _files;
         private readonly string _outPath;
 
-        private enum ResourceType
-        {
-            Audio,
-            Image
-        }
-
-        /// <summary>
-        /// Decompiles XNB files.
-        /// </summary>
-        /// <param name="files">A string array of paths to XNB files.</param>
-        /// <param name="outPath">The output directory where the decompiled files should go.</param>
         public Exporter(string[] files, string outPath = "")
         {
             _graphics = new GraphicsDeviceManager(this);
             _files = files;
+            if (!outPath.EndsWith("\\"))
+                outPath += "\\";
             _outPath = outPath;
         }
-        
+
         protected override void LoadContent()
         {
+            _contentManager = Content;
+            
+            // Iterate through all the files we were given
             for (var i = 0; i < _files.Length; i++)
-                ExportFile(_files[i], _outPath);
+            {
+                // If the file turns out to be nonexistent, skip it
+                if (!File.Exists(_files[i])) continue;
+
+                // Open the file for reading
+                using (var inStream = File.OpenRead(_files[i]))
+                {
+                    // Check if the file has an XNB header
+                    if (Encoding.UTF8.GetString(inStream.ReadBytes(0, 3)) == "XNB")
+                    {
+                        UpdateStatus("Validated " + Path.GetFileNameWithoutExtension(_files[i]));
+
+                        var file = _files[i].Substring(0, _files[i].Length - 4);
+
+                        // If the file is a sound, the process is slightly different as we don't need ContentManager
+                        if (Encoding.UTF8.GetString(inStream.ReadBytes(12, 49)) ==
+                            "Microsoft.Xna.Framework.Content.SoundEffectReader")
+                        {
+                            // Convert the file to a WAV
+                            var result = SoundExporter.ConvertToWav(file, inStream,
+                                _outPath == ""
+                                    ? Path.ChangeExtension(_files[i], ".wav")
+                                    : _outPath + Path.GetFileNameWithoutExtension(_files[i]) + ".wav");
+
+                            // Report back to the user if it was successful or not
+                            if (result.Type == SoundExporter.Result.Types.Success)
+                            {
+                                UpdateStatus($"[SUCCESS] Exported {Path.GetFileNameWithoutExtension(_files[i])}.wav");
+                            }
+                            else
+                            {
+                                UpdateStatus("Audio Error >> " + result);
+                                UpdateStatus("Please report this to gameking008 because I have no idea how to fix it.");
+                                Environment.Exit(1);
+                            }
+                            continue;
+                        }
+
+                        // If the file is not a sound, we will need ContentManager
+                        var obj = _contentManager.Load<object>(file);
+                        var type = obj.GetType();
+                        if (type == typeof(Texture2D))
+                        {
+                            // Export image
+                            var content = (Texture2D) obj;
+                            var outStream =
+                                File.Open(
+                                    _outPath == ""
+                                        ? Path.ChangeExtension(_files[i], ".png")
+                                        : _outPath + Path.GetFileNameWithoutExtension(_files[i]) + ".png",
+                                    FileMode.Create);
+                            content.SaveAsPng(outStream, content.Width, content.Height);
+
+                            UpdateStatus($"[SUCCESS] Exported {Path.GetFileNameWithoutExtension(_files[i])}.png");
+                        }
+                        else if (type == typeof(SpriteFont))
+                        {
+                            // Export font atlas
+                            var content = (SpriteFont) obj;
+                            var outStream =
+                                File.Open(
+                                    _outPath == ""
+                                        ? Path.ChangeExtension(_files[i], ".png")
+                                        : _outPath + Path.GetFileNameWithoutExtension(_files[i]) + ".png",
+                                    FileMode.Create);
+                            content.Texture.SaveAsPng(outStream, content.Texture.Width, content.Texture.Height);
+
+                            UpdateStatus($"[SUCCESS] Exported {Path.GetFileNameWithoutExtension(_files[i])}.png");
+                        }
+                    }
+                    else
+                    {
+                        // If the file does not have an XNB header, warn the user and skip it.
+                        UpdateStatus("[WARNING] >> Skipping '" + Path.GetFileName(_files[i]) +
+                                     "' as it does not have a valid header. It may be corrupt.");
+                    }
+                }
+            }
 
             UpdateStatus("\nAll done!");
 
             // We're done!
             OnCompleted?.Invoke();
-            Exit();
-        }
-
-        private void ExportFile(string file, string outPath)
-        {
-            if (!File.Exists(file)) return;
-
-
-            if (outPath == "") outPath = Path.GetDirectoryName(file);
-
-            // Validate the file before we try and parse it just in case.
-            ValidateFile(file);
-
-            switch (_type)
-            {
-                case ResourceType.Audio:
-                    // Give the audio file to gameking008's SoundExporter so it can work it's wizardry.
-                    var result = SoundExporter.ConvertToWav(file, outPath);
-                    if (result.Type == SoundExporter.Result.Types.Success)
-                    {
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        UpdateStatus("Success! Exported " + Path.GetFileNameWithoutExtension(file) + ".wav");
-                        Console.ForegroundColor = ConsoleColor.Gray;
-                    }
-                    else
-                    {
-                        UpdateStatus("Audio Error >> " + result);
-                        UpdateStatus("Please report this to gameking008 because I have no idea how to fix it.");
-                        Environment.Exit(1);
-                    }
-                    break;
-                case ResourceType.Image:
-                    using (Stream stream = File.Open(outPath + Path.GetFileNameWithoutExtension(file) + ".png", FileMode.Create))
-                    {
-                        // We pass Content.Load() the texture without the .xnb extension since it is added automatically.
-                        var texture = Content.Load<Texture2D>(file.Replace(".xnb", ""));
-                        texture.SaveAsPng(stream, texture.Width, texture.Height);
-                        
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        UpdateStatus("Success! Exported " + Path.GetFileNameWithoutExtension(file) + ".png");
-                        Console.ForegroundColor = ConsoleColor.Gray;
-                    }
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException("_type", _type, "");
-            }
-        }
-
-        private void ValidateFile(string file)
-        {
-            UpdateStatus("Validating " + Path.GetFileNameWithoutExtension(file) + "...");
-
-            // Read the given file.
-            var bytes = File.ReadAllBytes(file);
-            var s = string.Empty;
-
-            // Get first 3 bytes
-            for (var b = 0; b < 3; b++) s += Convert.ToChar(bytes[b]);
-            if (s != "XNB")
-            {
-                // XNB header is missing. We can't parse this file. Exit.
-                UpdateStatus(
-                    "Input Error >> File did not pass validation. This does not appear to be an XNB file.");
-                UpdateStatus("\nPress any key to exit.");
-                Console.ReadKey();
-                Environment.Exit(1);
-            }
-            else
-            {
-                // This looks like an XNB header. Now we determine it's type.
-                // Convert the first 64 bytes into a string.
-                for (var b = 0; b < 64; b++) s += Convert.ToChar(bytes[b]);
-                // If said string contains the word sound (all XNB sounds do), then set the type accordingly.
-                _type = s.Contains("Sound") ? ResourceType.Audio : ResourceType.Image;
-                // Display the type to the user.
-                UpdateStatus("Validated: " + Enum.GetName(typeof(ResourceType), _type));
-            }
         }
 
         private void UpdateStatus(string message)
         {
+            // This makes sure the console output goes through regardless
+            // of whether the user has subscribed to the event or not.
             if (OnStatusUpdate != null)
                 OnStatusUpdate(message);
             else
                 Console.WriteLine(message);
+        }
+    }
+
+    public static class Extensions
+    {
+        public static byte[] ReadBytes(this FileStream stream, int index, int length = 0)
+        {
+            stream.Seek(index, SeekOrigin.Begin);
+            var bytes = new byte[length == 0 ? stream.Length - index : Math.Min(stream.Length - index, length)];
+            for (var i = 0; i < bytes.Length; i++)
+                bytes[i] = (byte) stream.ReadByte();
+            return bytes;
         }
     }
 }
